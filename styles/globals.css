@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Optional global styling */
 body {
-  @apply bg-neutral-100 text-gray-800 font-sans;
+  background-color: #f9fafb;
+  color: #1f2937;
+  font-family: system-ui, sans-serif;
 }
