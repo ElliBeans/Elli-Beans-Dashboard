@@ -14,23 +14,16 @@ export default function KDS() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchOrders();
-
-    // Poll every 5 seconds
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update order status
-  const updateStatus = async (id, newStatus) => {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", id);
-    if (error) console.error("Error updating status:", error);
-    else fetchOrders();
+useEffect(() => {
+  const syncOrders = async () => {
+    await fetch("/api/fetch-square-orders"); // fetch Square orders
+    fetchOrders(); // then fetch from Supabase to update UI
   };
+
+  syncOrders(); // initial fetch
+  const interval = setInterval(syncOrders, 5000); // every 5 seconds
+  return () => clearInterval(interval);
+}, []);
 
   return (
     <div className="p-8">
