@@ -17,10 +17,20 @@ export default function KDS() {
   useEffect(() => {
     fetchOrders();
 
-    // Optional: Poll every 5 seconds for new orders
+    // Poll every 5 seconds
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Update order status
+  const updateStatus = async (id, newStatus) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", id);
+    if (error) console.error("Error updating status:", error);
+    else fetchOrders();
+  };
 
   return (
     <div className="p-8">
@@ -35,7 +45,7 @@ export default function KDS() {
           {orders.map((order) => (
             <li
               key={order.id}
-              className="p-4 bg-white rounded shadow flex justify-between"
+              className="p-4 bg-white rounded shadow flex justify-between items-center"
             >
               <div>
                 <p className="font-semibold">{order.customer_name || "Guest"}</p>
@@ -44,13 +54,30 @@ export default function KDS() {
                   {order.items
                     .map(
                       (id) =>
-                        order.items_detail.find((i) => i.id === id)?.name || "Unknown"
+                        order.items_detail.find((i) => i.id === id)?.name ||
+                        "Unknown"
                     )
                     .join(", ")}
                 </p>
               </div>
-              <div>
-                <p>Status: {order.status || "Pending"}</p>
+              <div className="flex space-x-2">
+                <p className="mr-2">Status: {order.status || "Pending"}</p>
+                {order.status !== "In Progress" && (
+                  <button
+                    onClick={() => updateStatus(order.id, "In Progress")}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                  >
+                    Start
+                  </button>
+                )}
+                {order.status !== "Complete" && (
+                  <button
+                    onClick={() => updateStatus(order.id, "Complete")}
+                    className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                  >
+                    Complete
+                  </button>
+                )}
               </div>
             </li>
           ))}
