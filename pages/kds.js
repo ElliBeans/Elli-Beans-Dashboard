@@ -14,16 +14,69 @@ export default function KDS() {
     setLoading(false);
   };
 
-useEffect(() => {
-  const syncOrders = async () => {
-    await fetch("/api/fetch-square-orders"); // fetch Square orders
-    fetchOrders(); // then fetch from Supabase to update UI
+  useEffect(() => {
+    fetchOrders();
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Deduct inventory based on order items
+  const deductInventory = async (order) => {
+    try {
+      for (let itemId of order.items) {
+        // Get the product/recipe
+        const { data: productData } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", itemId)
+          .single();
+
+        if (!productData) continue;
+
+        // Deduct each ingredient
+        for (let ingredient of productData.ingredients) {
+          const { data: invData } = await supabase
+            .from("inventory")
+            .select("*")
+            .eq("id", ingredient.inventory_id)
+            .single();
+
+          if (!invData) continue;
+
+          await supabase
+            .from("inventory")
+            .update({ quantity: invData.quantity - ingredient.amount })
+            .eq("id", ingredient.inventory_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error deducting inventory:", error);
+    }
   };
 
-  syncOrders(); // initial fetch
-  const interval = setInterval(syncOrders, 5000); // every 5 seconds
-  return () => clearInterval(interval);
-}, []);
+  // Update order status & deduct inventory if Complete
+  const updateStatus = async (id, newStatus) => {
+    const { data: order } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!order) return;
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", id);
+
+    if (error) console.error("Error updating status:", error);
+    else {
+      if (newStatus === "Complete") await deductInventory(order);
+      fetchOrders();
+    }
+  };
 
   return (
     <div className="p-8">
