@@ -2,17 +2,23 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export default function KDS() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState([]); // ✅ starts as empty array
   const [inventory, setInventory] = useState([]);
   const [products, setProducts] = useState([]);
   const [lastCheck, setLastCheck] = useState(new Date().toISOString());
+  const [loading, setLoading] = useState(true);
 
-  // Fetch initial data
   useEffect(() => {
-    fetchProducts();
-    fetchInventory();
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 10000); // check every 10s
+    const init = async () => {
+      await fetchProducts();
+      await fetchInventory();
+      await fetchOrders();
+      setLoading(false);
+    };
+    init();
+
+    // Check for new orders every 10s
+    const interval = setInterval(fetchOrders, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -30,14 +36,16 @@ export default function KDS() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders"); // our proxy endpoint for Square
+      const res = await fetch("/api/orders");
       const data = await res.json();
-      if (data.orders && data.orders.length > 0) {
+
+      if (Array.isArray(data.orders) && data.orders.length > 0) {
         const newOrders = data.orders.filter(
           (o) => new Date(o.created_at) > new Date(lastCheck)
         );
+
         if (newOrders.length > 0) {
-          handleNewOrders(newOrders);
+          await handleNewOrders(newOrders);
           setOrders((prev) => [...newOrders, ...prev]);
           setLastCheck(new Date().toISOString());
         }
@@ -81,18 +89,24 @@ export default function KDS() {
         Automatically updates inventory when new orders come in.
       </p>
 
-      <div className="space-y-4">
-        {orders.map((order) => (
-          <div key={order.id} className="p-4 bg-white shadow rounded">
-            <h2 className="font-semibold">Order #{order.id}</h2>
-            <ul className="mt-2 list-disc pl-5">
-              {order.line_items?.map((item, idx) => (
-                <li key={idx}>{item.name}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <p className="text-gray-500">Loading...</p>
+      ) : orders.length > 0 ? (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <div key={order.id} className="p-4 bg-white shadow rounded">
+              <h2 className="font-semibold">Order #{order.id}</h2>
+              <ul className="mt-2 list-disc pl-5">
+                {order.line_items?.map((item, idx) => (
+                  <li key={idx}>{item.name}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-center mt-10">No active orders</p>
+      )}
     </div>
   );
 }
