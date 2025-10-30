@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function KDS() {
   const [orders, setOrders] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch orders from Supabase
@@ -14,11 +15,26 @@ export default function KDS() {
     setLoading(false);
   };
 
+  // Fetch low-stock items
+  const fetchLowStock = async () => {
+    const { data, error } = await supabase
+      .from("inventory")
+      .select("*")
+      .lte("quantity", "min_quantity"); // quantity <= min_quantity
+    if (error) console.error("Error fetching low-stock items:", error);
+    else setLowStockItems(data);
+  };
+
+  // Poll orders and low-stock items every 5 seconds
   useEffect(() => {
     fetchOrders();
+    fetchLowStock();
 
-    // Poll every 5 seconds
-    const interval = setInterval(fetchOrders, 5000);
+    const interval = setInterval(() => {
+      fetchOrders();
+      fetchLowStock();
+    }, 5000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -75,6 +91,7 @@ export default function KDS() {
     else {
       if (newStatus === "Complete") await deductInventory(order);
       fetchOrders();
+      fetchLowStock(); // refresh low-stock alerts after inventory deduction
     }
   };
 
@@ -82,6 +99,21 @@ export default function KDS() {
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">KDS / Orders</h1>
 
+      {/* Low-stock alerts */}
+      {lowStockItems.length > 0 && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded">
+          <h2 className="font-bold text-red-700 mb-2">⚠️ Low Stock Alerts</h2>
+          <ul>
+            {lowStockItems.map((item) => (
+              <li key={item.id}>
+                {item.name}: {item.quantity} left
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Orders list */}
       {loading ? (
         <p>Loading orders...</p>
       ) : orders.length === 0 ? (
