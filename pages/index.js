@@ -12,7 +12,7 @@ export default function Home() {
       <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
         <a href="/inventory" style={linkStyle}>📦 Inventory</a>
         <a href="/recipes" style={linkStyle}>📘 Recipes</a>
-        <a href="/_app" style={linkStyle}>🛍 Products</a>
+        <a href="/products" style={linkStyle}>🛍 Products</a>
         <a href="/kds" style={linkStyle}>🍳 Kitchen Display System</a>
       </div>
     </div>
