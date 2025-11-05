@@ -29,12 +29,14 @@ export default function Inventory() {
       {
         name,
         quantity: Number(quantity),
-        par: Number(par),
+        par_level: Number(par),     // ✅ FIXED
         cost: Number(cost),
       },
     ]);
-    if (error) console.error("Error adding item:", error);
-    else {
+
+    if (error) {
+      console.error("Error adding item:", error);
+    } else {
       setName("");
       setQuantity("");
       setPar("");
@@ -43,12 +45,13 @@ export default function Inventory() {
     }
   };
 
-  // Update quantity (simple example)
+  // Update quantity
   const updateQuantity = async (id, newQty) => {
     const { error } = await supabase
       .from("inventory")
       .update({ quantity: Number(newQty) })
       .eq("id", id);
+
     if (error) console.error("Error updating quantity:", error);
     else fetchInventory();
   };
@@ -96,6 +99,7 @@ export default function Inventory() {
           className="w-full p-2 border rounded"
           required
         />
+
         <button
           type="submit"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -113,7 +117,7 @@ export default function Inventory() {
             <tr className="bg-gray-100">
               <th className="p-2">Name</th>
               <th className="p-2">Quantity</th>
-              <th className="p-2">Par</th>
+              <th className="p-2">Par Level</th>
               <th className="p-2">Cost</th>
               <th className="p-2">Actions</th>
             </tr>
@@ -122,6 +126,8 @@ export default function Inventory() {
             {items.map((item) => (
               <tr key={item.id} className="border-b">
                 <td className="p-2">{item.name}</td>
+
+                {/* Quantity Editable */}
                 <td className="p-2">
                   <input
                     type="number"
@@ -132,12 +138,13 @@ export default function Inventory() {
                     className="w-16 p-1 border rounded"
                   />
                 </td>
-                <td className="p-2">{item.par}</td>
-                <td className="p-2">${item.cost.toFixed(2)}</td>
-                <td className="p-2">
-                  {/* Future buttons: edit/delete */}
-                  —
-                </td>
+
+                {/* ✅ FIXED: par_level */}
+                <td className="p-2">{item.par_level}</td>
+
+                <td className="p-2">${Number(item.cost).toFixed(2)}</td>
+
+                <td className="p-2">—</td>
               </tr>
             ))}
           </tbody>
