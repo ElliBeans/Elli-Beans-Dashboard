@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
   try {
-    const resp = await fetch("https://connect.squareupsandbox.com/v2/orders/search", {
+    const resp = await fetch(""https://connect.squareup.com/v2/orders/search"
+", {
       method: "POST",
       headers: {
         "Square-Version": "2023-10-18",
