@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export default function KDS() {
-  const [orders, setOrders] = useState([]); // ✅ starts as empty array
+  const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [products, setProducts] = useState([]);
   const [lastCheck, setLastCheck] = useState(new Date().toISOString());
@@ -17,8 +17,7 @@ export default function KDS() {
     };
     init();
 
-    // Check for new orders every 10s
-    const interval = setInterval(fetchOrders, 10000);
+    const interval = setInterval(fetchOrders, 10000); // check every 10s
     return () => clearInterval(interval);
   }, []);
 
@@ -57,15 +56,18 @@ export default function KDS() {
 
   const handleNewOrders = async (newOrders) => {
     for (let order of newOrders) {
-      for (let item of order.line_items || []) {
+      const lineItems = JSON.parse(order.ingredients || "[]");
+
+      for (let item of lineItems) {
         const product = products.find(
           (p) => p.name.toLowerCase() === item.name.toLowerCase()
         );
+
         if (product && product.ingredients) {
           for (let ing of product.ingredients) {
             const invItem = inventory.find((i) => i.id === ing.inventory_id);
             if (invItem) {
-              const newQty = invItem.quantity - ing.amount;
+              const newQty = invItem.quantity - (ing.amount || 1);
               await supabase
                 .from("inventory")
                 .update({ quantity: newQty })
@@ -93,16 +95,21 @@ export default function KDS() {
         <p className="text-gray-500">Loading...</p>
       ) : orders.length > 0 ? (
         <div className="space-y-4">
-          {orders.map((order) => (
-            <div key={order.id} className="p-4 bg-white shadow rounded">
-              <h2 className="font-semibold">Order #{order.id}</h2>
-              <ul className="mt-2 list-disc pl-5">
-                {order.line_items?.map((item, idx) => (
-                  <li key={idx}>{item.name}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {orders.map((order) => {
+            const lineItems = JSON.parse(order.ingredients || "[]");
+            return (
+              <div key={order.id} className="p-4 bg-white shadow rounded">
+                <h2 className="font-semibold">Order #{order.id}</h2>
+                <ul className="mt-2 list-disc pl-5">
+                  {lineItems.map((item, idx) => (
+                    <li key={idx}>
+                      {item.name} x {item.quantity || 1}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <p className="text-gray-500 text-center mt-10">No active orders</p>
