@@ -1,127 +1,149 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export default function Products() {
-  const [products, setProducts] = useState([]);
-  const [inventory, setInventory] = useState([]);
-  const [newProduct, setNewProduct] = useState({ name: "", price: "", ingredients: [] });
+export default function Recipes() {
+  const [recipes, setRecipes] = useState([]);
+  const [name, setName] = useState("");
+  const [ingredients, setIngredients] = useState([{ ingredient: "", amount: "" }]);
+  const [loading, setLoading] = useState(true);
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase.from("products").select("*");
-    if (error) console.error("Error fetching products:", error);
-    else setProducts(data);
-  };
-
-  const fetchInventory = async () => {
-    const { data, error } = await supabase.from("inventory").select("*");
-    if (error) console.error("Error fetching inventory:", error);
-    else setInventory(data);
+  // Fetch all recipes
+  const fetchRecipes = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("recipes").select("*");
+    if (error) console.error("Error fetching recipes:", error);
+    else setRecipes(data);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchInventory();
+    fetchRecipes();
   }, []);
 
-  const addIngredient = () => {
-    setNewProduct({ ...newProduct, ingredients: [...newProduct.ingredients, { inventory_id: "", amount: 0 }] });
+  // Add new recipe
+  const addRecipe = async (e) => {
+    e.preventDefault();
+
+    const cleanedIngredients = ingredients
+      .filter((i) => i.ingredient.trim() !== "")
+      .map((i) => ({
+        ingredient: i.ingredient,
+        amount: Number(i.amount),
+      }));
+
+    const { error } = await supabase.from("recipes").insert([
+      {
+        name,
+        ingredients: cleanedIngredients, // ✅ jsonb field
+      },
+    ]);
+
+    if (error) {
+      console.error("Error adding recipe:", error);
+    } else {
+      setName("");
+      setIngredients([{ ingredient: "", amount: "" }]);
+      fetchRecipes();
+    }
   };
 
-  const handleIngredientChange = (index, field, value) => {
-    const updated = [...newProduct.ingredients];
+  // Add another ingredient row
+  const addIngredientRow = () => {
+    setIngredients([...ingredients, { ingredient: "", amount: "" }]);
+  };
+
+  // Update ingredient fields
+  const updateIngredientField = (index, field, value) => {
+    const updated = [...ingredients];
     updated[index][field] = value;
-    setNewProduct({ ...newProduct, ingredients: updated });
-  };
-
-  const createProduct = async () => {
-    const { data, error } = await supabase.from("products").insert([newProduct]);
-    if (error) console.error("Error creating product:", error);
-    else {
-      setNewProduct({ name: "", price: "", ingredients: [] });
-      fetchProducts();
-    }
-  };
-
-  const calculateCOGS = (ingredients) => {
-    let total = 0;
-    for (let ing of ingredients) {
-      const inv = inventory.find((i) => i.id === ing.inventory_id);
-      if (inv) total += inv.cost * ing.amount;
-    }
-    return total.toFixed(2);
+    setIngredients(updated);
   };
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Products / Recipes</h1>
+      <h1 className="text-2xl font-bold mb-6">Recipes</h1>
 
-      {/* Add New Product */}
-      <div className="mb-6 p-4 bg-gray-100 rounded">
-        <h2 className="font-semibold mb-2">Add New Product</h2>
+      {/* Add Recipe Form */}
+      <form
+        onSubmit={addRecipe}
+        className="mb-8 p-4 bg-white shadow rounded space-y-4 max-w-xl"
+      >
+        <h2 className="font-semibold text-lg">Add New Recipe</h2>
+
         <input
           type="text"
-          placeholder="Product Name"
-          value={newProduct.name}
-          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-          className="border p-1 mr-2"
+          placeholder="Recipe Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-2 border rounded"
+          required
         />
-        <input
-          type="number"
-          placeholder="Price"
-          value={newProduct.price}
-          onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
-          className="border p-1 mr-2"
-        />
-        <button
-          onClick={addIngredient}
-          className="bg-blue-500 text-white px-2 py-1 rounded"
-        >
-          + Ingredient
-        </button>
 
-        {newProduct.ingredients.map((ing, index) => (
-          <div key={index} className="mt-2 flex space-x-2">
-            <select
-              value={ing.inventory_id}
-              onChange={(e) => handleIngredientChange(index, "inventory_id", parseInt(e.target.value))}
-              className="border p-1"
-            >
-              <option value="">Select Ingredient</option>
-              {inventory.map((i) => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
+        <h3 className="font-medium text-md">Ingredients</h3>
+
+        {ingredients.map((ing, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Ingredient name"
+              value={ing.ingredient}
+              onChange={(e) =>
+                updateIngredientField(i, "ingredient", e.target.value)
+              }
+              className="flex-1 p-2 border rounded"
+            />
             <input
               type="number"
               placeholder="Amount"
               value={ing.amount}
-              onChange={(e) => handleIngredientChange(index, "amount", parseFloat(e.target.value))}
-              className="border p-1 w-20"
+              onChange={(e) =>
+                updateIngredientField(i, "amount", e.target.value)
+              }
+              className="w-24 p-2 border rounded"
             />
           </div>
         ))}
 
         <button
-          onClick={createProduct}
-          className="mt-2 bg-green-500 text-white px-2 py-1 rounded"
+          type="button"
+          onClick={addIngredientRow}
+          className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
         >
-          Add Product
+          + Add Ingredient
         </button>
-      </div>
 
-      {/* Product List */}
-      <div>
-        <h2 className="font-semibold mb-2">Existing Products</h2>
-        <ul className="space-y-2">
-          {products.map((prod) => (
-            <li key={prod.id} className="p-2 bg-white rounded shadow flex justify-between">
-              <span>
-                {prod.name} — Price: ${prod.price} — COGS: ${calculateCOGS(prod.ingredients || [])}
-              </span>
-            </li>
+        <button
+          type="submit"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 block"
+        >
+          Save Recipe
+        </button>
+      </form>
+
+      {/* Recipe List */}
+      {loading ? (
+        <p>Loading recipes...</p>
+      ) : recipes.length === 0 ? (
+        <p>No recipes yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {recipes.map((recipe) => (
+            <div key={recipe.id} className="bg-white shadow rounded p-4">
+              <h2 className="font-semibold text-xl">{recipe.name}</h2>
+
+              <h3 className="mt-3 font-medium">Ingredients:</h3>
+
+              <ul className="list-disc pl-6 mt-2">
+                {recipe.ingredients?.map((ing, idx) => (
+                  <li key={idx}>
+                    {ing.ingredient} — {ing.amount}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
